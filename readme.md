@@ -1,3 +1,140 @@
+📝 Project Deployment & Troubleshooting Report
+🔹 Project Overview
+
+Architecture: Microservices (8 services + API Gateway + Frontend).
+
+Database: MySQL (local, schema imported from dump file).
+
+Deployment: Dockerized & containerized with GitHub Actions.
+
+CI/CD:
+
+GitHub Actions → Build & push Docker images.
+
+GitLab → Container Registry (images pushed & pulled).
+
+GitLab Runner → Self-hosted runner on Contabo for direct deployment.
+
+Code Quality: SonarQube integrated.
+
+New Requirement: LinkedIn integration for project notifications/updates.
+
+🔹 Key Issues & Solutions
+1️⃣ Nginx Issues
+
+Error:
+
+nginx: [emerg] open() "/etc/nginx/sites-enabled/heavenly-hub-apigateway.conf" failed
+
+
+Root Cause: Missing config file in sites-enabled.
+Solution:
+
+Create config under /etc/nginx/sites-available/heavenly-hub-apigateway.conf.
+
+Add symlink:
+
+sudo ln -s /etc/nginx/sites-available/heavenly-hub-apigateway.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
+2️⃣ MySQL Database Setup
+
+Problem: Microservices need a common schema.
+Solution:
+
+Dump schema from repo:
+
+mysql -u admin -p < schema_dump.sql
+
+
+Create separate DBs if each service requires isolation.
+
+Update .env with proper host/port.
+
+3️⃣ Dockerization
+
+Problem: Some services not starting due to missing .env.
+Solution:
+
+Added .env support in each service.
+
+Configured docker-compose.yml with healthchecks and depends_on for service order.
+
+4️⃣ GitHub Actions CI/CD
+
+Pipeline Steps:
+
+Checkout code.
+
+Build Docker image per service.
+
+Push to GitLab Container Registry.
+
+Trigger Contabo GitLab Runner to deploy using docker-compose up -d.
+
+5️⃣ SonarQube Integration
+
+Problem: Quality gate not applied.
+Solution:
+
+Added SonarQube step in GitHub Actions with sonar-scanner.
+
+Configured Sonar token as GitHub Secret.
+
+6️⃣ LinkedIn Integration (New)
+
+Purpose: Post updates on build/deployment status to LinkedIn.
+
+Approach:
+
+Use LinkedIn API + GitHub Actions workflow.
+
+Steps:
+
+Create a LinkedIn App → Get Client ID & Secret.
+
+Get OAuth2 Access Token.
+
+In GitHub Actions, add LINKEDIN_ACCESS_TOKEN as secret.
+
+Add a job step:
+
+- name: Post update to LinkedIn
+  run: |
+    curl -X POST https://api.linkedin.com/v2/ugcPosts \
+    -H "Authorization: Bearer ${{ secrets.LINKEDIN_ACCESS_TOKEN }}" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "author": "urn:li:person:YOUR_ID",
+      "lifecycleState": "PUBLISHED",
+      "specificContent": {
+        "com.linkedin.ugc.ShareContent": {
+          "shareCommentary": {
+            "text": "🚀 New deployment of Microservices Project completed successfully via GitHub Actions & Docker!"
+          },
+          "shareMediaCategory": "NONE"
+        }
+      },
+      "visibility": {
+        "com.linkedin.ugc.MemberNetworkVisibility": "CONNECTIONS"
+      }
+    }'
+
+
+This ensures every successful deployment posts a LinkedIn update 🚀.
+
+🔹 Final Architecture (After Fixes & Integration)
+
+Frontend → API Gateway → 8 Microservices.
+
+MySQL (single instance, imported dump).
+
+CI/CD: GitHub Actions + GitLab Runner (Contabo).
+
+Monitoring: SonarQube + GitHub build logs.
+
+Notifications: LinkedIn API integration.
+
 Debugging Report – API Gateway (Nginx + Backend)
 1. Frontend Login Issue
 
